@@ -2,62 +2,39 @@
 # -*- coding: utf-8 -*-
 
 import time
-
+import threading
 from grove.button import Button
 from grove.factory import Factory
 from grove.gpio import GPIO
 from libs import oled
 from libs import music
-import threading
+from libs import led
+from libs import const
+from libs import button
 
 # sphinx autoapi required
-__all__ = ['Led', "LedButton", 'GroveLed', 'GPIO', 'Music']
-
-class Led(GPIO):
-
-    def __init__(self, pin):
-        super(Led, self).__init__(pin, GPIO.OUT)
-
-    def on(self):
-        self.write(1)
-
-    def off(self):
-        self.write(0)
-
-    def blink(self):
-
-        for i in range(100):
-            self.on()
-            time.sleep(0.5)
-            self.off()
-            time.sleep(0.5)
+__all__ = ['LedButton', 'GPIO', 'NormalButton']
 
 
-class LedThreading(threading.Thread):
-
-    def __init__(self, thread_name, gpio):
-        self.thread_name = str(thread_name)
-        self.gpio = gpio
-        threading.Thread.__init__(self)
-
-    def __str__(self):
-        return self.thread_name
-
-    def run(self):
-        self.gpio.blink()
-        print('Thread: %s ended.' % self)
+const.FOO = 100
+const.BAR = 'Hello'
 
 class LedButton(object):
 
-    def __init__(self,):
+    def __init__(self):
+        print(const.FOO)
         # High = light on
+        self.button = button.NormalButton(24)
+        self.button.on_press = self.on_press
+        self.button.on_release = self.on_release
+
         self.buttonLed = Factory.getOneLed("GPIO-HIGH", 16)
         self.buttonLed.light(False)
-        self.headLed = Led(8)
+        self.headLed = led.Led(8)
         self.headLed.off()
-        self.led = Led(5)
+        self.led = led.Led(5)
         self.led.off()
-        self.bodyLed = Led(22)
+        self.bodyLed = led.Led(22)
         self.bodyLed.off()
 
         self.oled = oled.Oled()
@@ -71,6 +48,16 @@ class LedButton(object):
         self.__btn.on_event(self, LedButton.__handle_event)
 
         self.oled.show('This is The Gundam')
+
+    def on_press(self, t):
+        self.music.on('http://192.168.1.42/rifle.wav', 'audio/wav')
+        self.bodyLed.on()
+        time.sleep(1)
+        self.bodyLed.off()
+        print('Button is pressed')
+
+    def on_release(self, t):
+        print("Button is released, pressed for {0} seconds".format(round(t,6)))
 
     @property
     def on_event(self):
@@ -91,9 +78,6 @@ class LedButton(object):
             return
 
         self.buttonLed.brightness = self.buttonLed.MAX_BRIGHT
-        # self.led.brightness = self.led.MAX_BRIGHT
-        # self.headLed.brightness = self.headLed.MAX_BRIGHT
-
         event = evt['code']
 
         if event & Button.EV_DOUBLE_CLICK:
@@ -105,11 +89,12 @@ class LedButton(object):
             print("EV_DOUBLE_CLICK")
 
         elif event & Button.EV_SINGLE_CLICK:
-            self.music.on()
+            self.music.on('http://192.168.1.42/music-1.mp3', 'audio/mp3')
 
-            thread1 = LedThreading(thread_name=1, gpio=self.led).start()
-            thread2 = LedThreading(thread_name=2, gpio=self.headLed).start()
-            thread3 = LedThreading(thread_name=3, gpio=self.bodyLed).start()
+            thread_list = threading.enumerate()
+            thread1 = led.LedThreading(thread_name=1, led=self.led, option={'method' : 'blink', 'count': 100}).start()
+            thread2 = led.LedThreading(thread_name=2, led=self.headLed, option={'method' : 'blink', 'count': 100}).start()
+            thread3 = led.LedThreading(thread_name=3, led=self.bodyLed, option={'method' : 'blink', 'count': 100}).start()
             thread_list.append(thread1)
             thread_list.append(thread2)
             thread_list.append(thread3)
@@ -127,9 +112,6 @@ class LedButton(object):
             self.oled.show('Power Off Gundam')
 
             print("EV_LONG_PRESS")
-        # elif event & Button.EV_LEVEL_CHANGED:
-        #     print('EV LEVEL CHANGED')
-            # self.oled.show('EV LEVEL CHANGED')
 
 
 def main():
