@@ -13,9 +13,9 @@ class Music():
         self.mc = cast.media_controller
         print(self.mc.status)
 
-    def on(self):
+    def on(self, path, type):
         print("play music")
-        self.mc.play_media('http://192.168.1.42/music-1.mp3', 'audio/mpeg', current_time=10, autoplay=True, title='gundam-1')
+        self.mc.play_media(path, type)
         self.mc.play()
         pychromecast.discovery.stop_discovery(self.browser)
 
