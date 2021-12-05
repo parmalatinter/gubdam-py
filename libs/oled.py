@@ -28,9 +28,10 @@ class Oled():
 		# Clear display.
 		self.oled.fill(0)
 		self.oled.show()
+		self.postions = [(0,0), (0, 17), (0, 34), (0, 51)]
 
-	def show(self, text):
-
+	def show(self, texts, selectIndex):
+		# postions (0,0), (0, 17)
 		# Clear display.
 		self.oled.fill(0)
 		self.oled.show()
@@ -41,27 +42,21 @@ class Oled():
 		# Get drawing object to draw on image.
 		draw = ImageDraw.Draw(image)
 
-		# Draw a white background
-		draw.rectangle((0, 0, self.oled.width, self.oled.height), outline=255, fill=255)
-
-		# Draw a smaller inner rectangle
-		draw.rectangle(
-		    (BORDER, BORDER, self.oled.width - BORDER - 1, self.oled.height - BORDER - 1),
-		    outline=0,
-		    fill=0,
-		)
-
 		# Load default font.
 		font = ImageFont.load_default()
 
+
 		# Draw Some Text
-		(font_width, font_height) = font.getsize(text)
-		draw.text(
-		    (self.oled.width // 2 - font_width // 2, self.oled.height // 2 - font_height // 2),
-		    text,
-		    font=font,
-		    fill=255,
-		)
+		for index, text in enumerate(texts):
+			if(index == selectIndex):
+				text = '> ' + text
+
+			draw.text(
+				self.postions[index],
+				text,
+				font=font,
+				fill=255
+			)
 
 		# Display image
 		self.oled.image(image)
