@@ -1,64 +1,126 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import board
-import digitalio
-from PIL import Image, ImageDraw, ImageFont
-import adafruit_ssd1306
+import time
+import threading
+from grove.button import Button
+from grove.factory import Factory
+from grove.gpio import GPIO
+from libs import oled
+from libs import music
+from libs import led
+from libs import const
+from libs import button
 
-# Change these
-# to the right size for your display!
-WIDTH = 128
-#HEIGHT = 32  # Change to 64 if needed
-HEIGHT = 64  # Change to 64 if needed
-BORDER = 5
-
-class Oled():
-	def __init__(self):
-		print(1)
-		# Define the Reset Pin
-		oled_reset = digitalio.DigitalInOut(board.D4)
+# sphinx autoapi required
+__all__ = ['LedButton', 'GPIO', 'NormalButton']
 
 
+const.FOO = 100
+const.BAR = 'Hello'
 
-		# Use for I2C.
-		i2c = board.I2C()
-		self.oled = adafruit_ssd1306.SSD1306_I2C(WIDTH, HEIGHT, i2c, addr=0x3C, reset=oled_reset)
+class LedButton(object):
 
-		# Clear display.
-		self.oled.fill(0)
-		self.oled.show()
+    def __init__(self):
+        print(const.FOO)
+        # High = light on
+        self.button = button.NormalButton(24)
+        self.button.on_press = self.on_press
+        self.button.on_release = self.on_release
 
-	def show(self, texts, postions):
-		# postions (0,0), (0, 17)
-		# Clear display.
-		self.oled.fill(0)
-		self.oled.show()
-		# Create blank image for drawing.
-		# Make sure to create image with mode '1' for 1-bit color.
-		image = Image.new("1", (self.oled.width, self.oled.height))
+        self.buttonLed = Factory.getOneLed("GPIO-HIGH", 16)
+        self.buttonLed.light(False)
+        self.headLed = led.Led(8)
+        self.headLed.off()
+        self.led = led.Led(5)
+        self.led.off()
+        self.bodyLed = led.Led(22)
+        self.bodyLed.off()
 
-		# Get drawing object to draw on image.
-		draw = ImageDraw.Draw(image)
+        self.oled = oled.Oled()
 
-		# Load default font.
-		font = ImageFont.load_default()
+        self.music = music.Music()
+        self.music.off()
+
+        # Low = pressed
+        self.__btn = Factory.getButton("GPIO-LOW", 16 + 1)
+        self.__on_event = None
+        self.__btn.on_event(self, LedButton.__handle_event)
+
+        self.oled.show('This is The Gundam')
+
+    def on_press(self, t):
+        self.music.on('http://192.168.1.42/rifle.wav', 'audio/wav')
+        self.bodyLed.on()
+        time.sleep(1)
+        self.bodyLed.off()
+        print('Button is pressed')
+
+    def on_release(self, t):
+        print("Button is released, pressed for {0} seconds".format(round(t,6)))
+
+    @property
+    def on_event(self):
+        return self.__on_event
+
+    @on_event.setter
+    def on_event(self, callback):
+        if not callable(callback):
+            return
+        self.__on_event = callback
+
+    def __handle_event(self, evt):
+        print("event index:{} event:{}".format(evt['index'], evt['code']))
+
+        if callable(self.__on_event):
+            # the customized behavior
+            self.__on_event(evt['index'], evt['code'], evt['time'])
+            return
+
+        self.buttonLed.brightness = self.buttonLed.MAX_BRIGHT
+        event = evt['code']
+
+        if event & Button.EV_DOUBLE_CLICK:
+            self.buttonLed.light(True)
+            self.led.off()
+            self.headLed.off()
+            self.bodyLed.off()
+
+            print("EV_DOUBLE_CLICK")
+
+        elif event & Button.EV_SINGLE_CLICK:
+            self.music.on('http://192.168.1.42/music-1.mp3', 'audio/mp3')
+
+            thread_list = threading.enumerate()
+            thread1 = led.LedThreading(thread_name=1, led=self.led, option={'method' : 'blink', 'count': 100}).start()
+            thread2 = led.LedThreading(thread_name=2, led=self.headLed, option={'method' : 'blink', 'count': 100}).start()
+            thread3 = led.LedThreading(thread_name=3, led=self.bodyLed, option={'method' : 'blink', 'count': 100}).start()
+            thread_list.append(thread1)
+            thread_list.append(thread2)
+            thread_list.append(thread3)
+
+            self.oled.show(['Power On Gundam'], [[0,0]])
 
 
-		# Draw Some Text
-		for index, text in texts:
-		    draw.text(
-		        postions[index],
-		        text,
-		        font=font,
-		        fill=255,
-		    )
+            print("EV_SINGLE_CLICK")
 
-		# Display image
-		self.oled.image(image)
-		self.oled.show()
+        elif event & Button.EV_LONG_PRESS:
+            self.buttonLed.light(False)
+            self.led.off()
+            self.headLed.off()
+            self.bodyLed.off()
+            self.music.off()
+            self.oled.show(['Power Off Gundam'], [[0,0]])
 
-	def off(self):
+            print("EV_LONG_PRESS")
 
-		self.oled.fill(0)
-		self.oled.show()
+
+def main():
+    ledbtn = LedButton()
+
+    while True:
+        time.sleep(1)
+
+
+if __name__ == '__main__':
+    main()
