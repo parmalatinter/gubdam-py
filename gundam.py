@@ -11,6 +11,7 @@ from libs import music
 from libs import led
 from libs import const
 from libs import button
+from libs import menu
 
 # sphinx autoapi required
 __all__ = ['LedButton', 'GPIO', 'NormalButton']
@@ -38,6 +39,7 @@ class LedButton(object):
         self.bodyLed.off()
 
         self.oled = oled.Oled()
+        self.menu = menu.Menu(self.oled)
 
         self.music = music.Music()
         self.music.off()
@@ -47,17 +49,47 @@ class LedButton(object):
         self.__on_event = None
         self.__btn.on_event(self, LedButton.__handle_event)
 
-        self.oled.show('This is The Gundam')
 
     def on_press(self, t):
+        self.menu.select()
+        print("menu")
+
+
+    def on_release(self, t):
+        print("Button is released, pressed for {0} seconds".format(round(t,6)))
+
+    def menu1(self):
         self.music.on('http://192.168.1.42/rifle.wav', 'audio/wav')
         self.bodyLed.on()
         time.sleep(1)
         self.bodyLed.off()
-        print('Button is pressed')
+        self.oled.show(['menu1'], [[0,0]])
 
-    def on_release(self, t):
-        print("Button is released, pressed for {0} seconds".format(round(t,6)))
+    def menu2(self):
+        self.music.on('http://192.168.1.42/newtype.mp3', 'audio/mp3')
+        self.headLed.on()
+        time.sleep(1)
+        self.led.off()
+        self.oled.show(['menu2'], [[0,0]])
+
+    def menu3(self):
+        self.music.on('http://192.168.1.42/move.mp3', 'audio/mp3')
+        self.led.on()
+        time.sleep(1)
+        self.led.off()
+        self.oled.show(['menu3'], [[0,0]])
+
+    def menu4(self):
+        self.music.on('http://192.168.1.42/music-1.mp3', 'audio/mp3')
+        thread_list = threading.enumerate()
+        thread1 = led.LedThreading(thread_name=1, led=self.led, option={'method' : 'blink', 'count': 100}).start()
+        thread2 = led.LedThreading(thread_name=2, led=self.headLed, option={'method' : 'blink', 'count': 100}).start()
+        thread3 = led.LedThreading(thread_name=3, led=self.bodyLed, option={'method' : 'blink', 'count': 100}).start()
+        thread_list.append(thread1)
+        thread_list.append(thread2)
+        thread_list.append(thread3)
+
+        self.oled.show(['menu4'], [[0,0]])
 
     @property
     def on_event(self):
@@ -89,18 +121,15 @@ class LedButton(object):
             print("EV_DOUBLE_CLICK")
 
         elif event & Button.EV_SINGLE_CLICK:
-            self.music.on('http://192.168.1.42/music-1.mp3', 'audio/mp3')
-
-            thread_list = threading.enumerate()
-            thread1 = led.LedThreading(thread_name=1, led=self.led, option={'method' : 'blink', 'count': 100}).start()
-            thread2 = led.LedThreading(thread_name=2, led=self.headLed, option={'method' : 'blink', 'count': 100}).start()
-            thread3 = led.LedThreading(thread_name=3, led=self.bodyLed, option={'method' : 'blink', 'count': 100}).start()
-            thread_list.append(thread1)
-            thread_list.append(thread2)
-            thread_list.append(thread3)
-
-            self.oled.show(['Power On Gundam'], [[0,0]])
-
+            index = self.menu.getIndex() + 1 
+            if index == 1:
+                self.menu1()
+            elif index == 2:
+                self.menu2()
+            elif index == 3:
+                self.menu3()
+            elif index == 4:
+                self.menu4()
 
             print("EV_SINGLE_CLICK")
 
