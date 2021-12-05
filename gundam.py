@@ -99,7 +99,8 @@ class LedButton(object):
             thread_list.append(thread2)
             thread_list.append(thread3)
 
-            self.oled.show('Power On Gundam')
+            self.oled.show(['Power On Gundam'], [[0,0]])
+
 
             print("EV_SINGLE_CLICK")
 
@@ -109,7 +110,7 @@ class LedButton(object):
             self.headLed.off()
             self.bodyLed.off()
             self.music.off()
-            self.oled.show('Power Off Gundam')
+            self.oled.show(['Power Off Gundam'], [[0,0]])
 
             print("EV_LONG_PRESS")
 
